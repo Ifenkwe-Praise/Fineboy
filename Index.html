@@ -3,83 +3,192 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your Location</title>
+    <title>Advanced Geolocation Finder</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f0f0;
+            min-height: 100vh;
         }
         .container {
-            background-color: white;
-            padding: 2rem;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            text-align: center;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
         }
         h1 {
-            color: #333;
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        #location-btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background-color: #3498db;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #location-btn:hover {
+            background-color: #2980b9;
         }
         #location-info {
-            margin-top: 1rem;
+            margin-top: 20px;
+        }
+        .info-item {
+            background-color: #ecf0f1;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        .info-item strong {
+            color: #2c3e50;
         }
         #error-message {
-            color: red;
+            color: #e74c3c;
+            text-align: center;
+            margin-top: 20px;
+        }
+        #instructions {
+            background-color: #ffeaa7;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 20px;
+            font-style: italic;
+        }
+        .loading {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .loading:after {
+            content: '...';
+            animation: dots 1.5s steps(5, end) infinite;
+        }
+        @keyframes dots {
+            0%, 20% {
+                color: rgba(0,0,0,0);
+                text-shadow:
+                    .25em 0 0 rgba(0,0,0,0),
+                    .5em 0 0 rgba(0,0,0,0);
+            }
+            40% {
+                color: #333;
+                text-shadow:
+                    .25em 0 0 rgba(0,0,0,0),
+                    .5em 0 0 rgba(0,0,0,0);
+            }
+            60% {
+                text-shadow:
+                    .25em 0 0 #333,
+                    .5em 0 0 rgba(0,0,0,0);
+            }
+            80%, 100% {
+                text-shadow:
+                    .25em 0 0 #333,
+                    .5em 0 0 #333;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Your Location</h1>
-        <div id="location-info">Loading location...</div>
+        <h1>Geolocation Finder</h1>
+        <button id="location-btn">Get My Location</button>
+        <div id="location-info"></div>
         <div id="error-message"></div>
+        <div id="instructions" style="display:none;"></div>
     </div>
 
     <script>
-        function showError(message) {
-            document.getElementById('error-message').textContent = message;
+        const locationBtn = document.getElementById('location-btn');
+        const locationInfo = document.getElementById('location-info');
+        const errorMessage = document.getElementById('error-message');
+        const instructions = document.getElementById('instructions');
+
+        function showError(message, showInstructions = false) {
+            errorMessage.textContent = message;
+            locationInfo.innerHTML = '';
+            if (showInstructions) {
+                instructions.innerHTML = `
+                    To fix this:<br>
+                    1. Click the lock icon (or info icon) next to the URL<br>
+                    2. Find the 'Location' setting and change it to 'Allow'<br>
+                    3. Reload the page and try again
+                `;
+                instructions.style.display = 'block';
+            } else {
+                instructions.style.display = 'none';
+            }
+        }
+
+        function showLoading() {
+            locationInfo.innerHTML = '<div class="loading">Fetching location</div>';
+            errorMessage.textContent = '';
+            instructions.style.display = 'none';
+        }
+
+        async function getLocationDetails(latitude, longitude) {
+            try {
+                const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch location details');
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('Error fetching location details:', error);
+                throw error;
+            }
         }
 
         function showPosition(position) {
-            const latitude = position.coords.latitude;
-            const longitude = position.coords.longitude;
-
-            fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`)
-                .then(response => response.json())
+            const { latitude, longitude } = position.coords;
+            showLoading();
+            
+            getLocationDetails(latitude, longitude)
                 .then(data => {
-                    const locationInfo = `
-                        <p><strong>Latitude:</strong> ${latitude}</p>
-                        <p><strong>Longitude:</strong> ${longitude}</p>
-                        <p><strong>City:</strong> ${data.city || 'N/A'}</p>
-                        <p><strong>Country:</strong> ${data.countryName || 'N/A'}</p>
+                    locationInfo.innerHTML = `
+                        <div class="info-item"><strong>Latitude:</strong> ${latitude}</div>
+                        <div class="info-item"><strong>Longitude:</strong> ${longitude}</div>
+                        <div class="info-item"><strong>City:</strong> ${data.city || 'N/A'}</div>
+                        <div class="info-item"><strong>State/Province:</strong> ${data.principalSubdivision || 'N/A'}</div>
+                        <div class="info-item"><strong>Country:</strong> ${data.countryName || 'N/A'}</div>
+                        <div class="info-item"><strong>Postal Code:</strong> ${data.postcode || 'N/A'}</div>
                     `;
-                    document.getElementById('location-info').innerHTML = locationInfo;
                 })
                 .catch(error => {
-                    showError('Error fetching location details.');
-                    console.error('Error:', error);
+                    showError('Error fetching location details. Please try again.');
                 });
         }
 
         function getLocation() {
+            showLoading();
             if ("geolocation" in navigator) {
                 navigator.geolocation.getCurrentPosition(showPosition, function(error) {
                     switch(error.code) {
                         case error.PERMISSION_DENIED:
-                            showError("User denied the request for Geolocation.");
+                            showError("Location access denied. Please enable location services.", true);
                             break;
                         case error.POSITION_UNAVAILABLE:
-                            showError("Location information is unavailable.");
+                            showError("Location information is unavailable. Please try again.");
                             break;
                         case error.TIMEOUT:
-                            showError("The request to get user location timed out.");
+                            showError("The request to get your location timed out. Please try again.");
                             break;
-                        case error.UNKNOWN_ERROR:
-                            showError("An unknown error occurred.");
+                        default:
+                            showError("An unknown error occurred. Please try again.");
                             break;
                     }
                 });
@@ -88,8 +197,7 @@
             }
         }
 
-        // Call getLocation when the page loads
-        window.onload = getLocation;
+        locationBtn.addEventListener('click', getLocation);
     </script>
 </body>
 </html>

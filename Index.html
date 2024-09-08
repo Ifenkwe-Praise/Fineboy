@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Location</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+        }
+        #location-info {
+            margin-top: 1rem;
+        }
+        #error-message {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Your Location</h1>
+        <div id="location-info">Loading location...</div>
+        <div id="error-message"></div>
+    </div>
+
+    <script>
+        function showError(message) {
+            document.getElementById('error-message').textContent = message;
+        }
+
+        function showPosition(position) {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+
+            fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`)
+                .then(response => response.json())
+                .then(data => {
+                    const locationInfo = `
+                        <p><strong>Latitude:</strong> ${latitude}</p>
+                        <p><strong>Longitude:</strong> ${longitude}</p>
+                        <p><strong>City:</strong> ${data.city || 'N/A'}</p>
+                        <p><strong>Country:</strong> ${data.countryName || 'N/A'}</p>
+                    `;
+                    document.getElementById('location-info').innerHTML = locationInfo;
+                })
+                .catch(error => {
+                    showError('Error fetching location details.');
+                    console.error('Error:', error);
+                });
+        }
+
+        function getLocation() {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(showPosition, function(error) {
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            showError("User denied the request for Geolocation.");
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            showError("Location information is unavailable.");
+                            break;
+                        case error.TIMEOUT:
+                            showError("The request to get user location timed out.");
+                            break;
+                        case error.UNKNOWN_ERROR:
+                            showError("An unknown error occurred.");
+                            break;
+                    }
+                });
+            } else {
+                showError("Geolocation is not supported by this browser.");
+            }
+        }
+
+        // Call getLocation when the page loads
+        window.onload = getLocation;
+    </script>
+</body>
+</html>
